@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "kotlin": "1.2.31",
+    "kotlin-test": "1.2.31",
+    "aws-sdk": "2.207.0"
+  }
+}

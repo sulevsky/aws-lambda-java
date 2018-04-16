@@ -1,0 +1,10 @@
+.gradle/
+.idea/
+build/
+classes/
+logs/
+out/
+
+*.iml
+.DS_Store
+.gradletasknamecache

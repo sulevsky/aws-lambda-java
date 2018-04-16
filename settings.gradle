@@ -1,0 +1,5 @@
+rootProject.name = 'aws-lambda-kotlin'
+
+include 'lambda-kotlin-java'
+include 'lambda-kotlin-nodejs'
+include 'lambda-kotlin-spring'

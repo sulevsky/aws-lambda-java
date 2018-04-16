@@ -1,0 +1,66 @@
+import com.amazonaws.services.lambda.model.InvocationType
+import jp.classmethod.aws.gradle.lambda.AWSLambdaInvokeTask
+import jp.classmethod.aws.gradle.lambda.AWSLambdaMigrateFunctionTask
+
+buildscript {
+    ext.kotlin_version = '1.2.31'
+
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "jp.classmethod.aws:gradle-aws-plugin:0.30"
+    }
+}
+
+version '1.0-SNAPSHOT'
+
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'groovy'
+apply plugin: 'jp.classmethod.aws'
+apply plugin: 'jp.classmethod.aws.lambda'
+apply plugin: 'kotlin'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'com.amazonaws:aws-lambda-java-core:1.2.0'
+    compile 'com.amazonaws:aws-lambda-java-events:2.1.0'
+    compile 'com.amazonaws:aws-java-sdk-s3:1.11.308'
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+    testCompile 'net.bytebuddy:byte-buddy:1.6.4'
+    testCompile 'org.objenesis:objenesis:1.2'
+    testCompile 'org.spockframework:spock-core:1.1-groovy-2.4'
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+task deployFunction(type: AWSLambdaMigrateFunctionTask, dependsOn: [shadowJar, test]) {
+    functionName = project.name
+    runtime = com.amazonaws.services.lambda.model.Runtime.Java8
+    role = "arn:aws:iam::${aws.accountId}:role/lambdaDemoRole"
+
+    zipFile = shadowJar.archivePath
+    handler = "com.demo.Handler::handleRequest"
+    memorySize = 512
+    timeout = 10
+}
+
+task invokeFunction(type: AWSLambdaInvokeTask) {
+    functionName = project.name
+    invocationType = InvocationType.RequestResponse
+    payload = file("src/test/resources/sample_request.json")
+    doLast {
+        println "Lambda function result: " + new String(invokeResult.payload.array())
+    }
+}

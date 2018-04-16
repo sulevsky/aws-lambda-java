@@ -1,0 +1,1 @@
+exports.handler = require('./lambda-kotlin-nodejs').com.demo.mainHandler;

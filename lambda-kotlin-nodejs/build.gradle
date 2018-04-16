@@ -1,0 +1,101 @@
+import com.amazonaws.services.lambda.model.InvocationType
+import jp.classmethod.aws.gradle.lambda.AWSLambdaInvokeTask
+import jp.classmethod.aws.gradle.lambda.AWSLambdaMigrateFunctionTask
+
+buildscript {
+    ext.kotlin_version = '1.2.31'
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "jp.classmethod.aws:gradle-aws-plugin:0.35"
+        classpath 'com.moowork.gradle:gradle-node-plugin:1.2.0'
+    }
+}
+
+version '1.0-SNAPSHOT'
+
+apply plugin: 'com.moowork.node'
+apply plugin: 'jp.classmethod.aws'
+apply plugin: 'jp.classmethod.aws.lambda'
+apply plugin: 'kotlin2js'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
+    testCompile "org.jetbrains.kotlin:kotlin-test-js"
+}
+
+[compileKotlin2Js, compileTestKotlin2Js]*.configure {
+    kotlinOptions {
+        sourceMap = true
+        moduleKind = 'commonjs'
+    }
+}
+
+task copyJs(type: Copy, dependsOn: compileKotlin2Js) {
+    from 'src/main/js'
+    into "${buildDir}/classes/kotlin/main"
+}
+
+node {
+    download = true
+}
+
+task installRuntimeLibs(type: NpmTask, dependsOn: copyJs) {
+    args = ['install', "--prefix", "${buildDir}/classes/kotlin/main"]
+}
+
+tasks.compileTestKotlin2Js.dependsOn(installRuntimeLibs)
+
+task installJasmine(type: NpmTask) {
+    args = ['install', 'jasmine', "--prefix", "${buildDir}"]
+}
+
+task copyRuntimeCodeToTest(type: Copy, dependsOn: compileTestKotlin2Js) {
+    from "${buildDir}/classes/kotlin/main"
+    exclude("node_modules")
+    into "${buildDir}/node_modules"
+}
+
+task copyRuntimeLibsToTest(type: Copy, dependsOn: compileTestKotlin2Js) {
+    from "${buildDir}/classes/kotlin/main/node_modules"
+    into "${buildDir}/node_modules"
+}
+
+task runJasmine(type: NodeTask, dependsOn: [compileTestKotlin2Js, installJasmine, copyRuntimeCodeToTest, copyRuntimeLibsToTest]) {
+    script = file("${buildDir}/node_modules/jasmine/bin/jasmine.js")
+    args = [compileTestKotlin2Js.outputFile]
+}
+
+test.dependsOn runJasmine
+
+task archiveZip(type: Zip, dependsOn: test) {
+    from fileTree("${buildDir}/classes/kotlin/main")
+}
+
+task deployFunction(type: AWSLambdaMigrateFunctionTask, dependsOn: archiveZip) {
+    functionName = project.name
+    memorySize = 512
+    timeout = 4
+    runtime = com.amazonaws.services.lambda.model.Runtime.Nodejs43
+    role = "arn:aws:iam::${aws.accountId}:role/lambdaDemoRole"
+    zipFile = archiveZip.archivePath
+    handler = "index.handler"
+}
+
+task invokeFunction(type: AWSLambdaInvokeTask) {
+    functionName = project.name
+    invocationType = InvocationType.RequestResponse
+    payload = file("src/test/resources/sample_request.json")
+    doLast {
+        println "Lambda function result: " + new String(invokeResult.payload.array(), "UTF-8")
+    }
+}
