@@ -21,11 +21,6 @@ class Application {
         }
     }
 
-    @Bean
-    fun objectMapper(): ObjectMapper {
-        return ObjectMapper()
-    }
-
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {

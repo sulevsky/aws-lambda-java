@@ -4,14 +4,14 @@ import jp.classmethod.aws.gradle.lambda.AWSLambdaMigrateFunctionTask
 
 buildscript {
     ext {
-        kotlinVersion = '1.2.31'
+        kotlinVersion = '1.2.60'
     }
     repositories {
         mavenCentral()
         jcenter()
     }
     dependencies {
-        classpath 'org.springframework.boot:spring-boot-gradle-plugin:2.0.1.RELEASE'
+        classpath 'org.springframework.boot:spring-boot-gradle-plugin:2.0.4.RELEASE'
         classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
         classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlinVersion"
@@ -33,7 +33,6 @@ apply plugin: 'io.spring.dependency-management'
 
 repositories {
     mavenCentral()
-    maven { url "https://repo.spring.io/milestone" }
 }
 
 dependencies {
@@ -41,10 +40,10 @@ dependencies {
     compile 'com.amazonaws:aws-lambda-java-events:2.1.0'
     compile 'com.amazonaws:aws-java-sdk-s3:1.11.308'
 
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
-    compile "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    compile "org.jetbrains.kotlin:kotlin-reflect"
 
-    compile 'org.springframework.cloud:spring-cloud-function-adapter-aws:1.0.0.M5'
+    compile 'org.springframework.cloud:spring-cloud-function-adapter-aws:1.0.0.RELEASE'
 
     testCompile 'org.springframework.boot:spring-boot-starter-test'
     testCompile 'net.bytebuddy:byte-buddy:1.6.4'
@@ -57,6 +56,18 @@ compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
 
+shadowJar {
+    classifier = 'aws'
+    mergeServiceFiles()
+    append 'META-INF/spring.handlers'
+    append 'META-INF/spring.schemas'
+    append 'META-INF/spring.tooling'
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.PropertiesFileTransformer) {
+        paths = ['META-INF/spring.factories' ]
+        mergeStrategy = "append"
+    }
+}
+
 assemble.dependsOn shadowJar
 
 task deployFunction(type: AWSLambdaMigrateFunctionTask, dependsOn: [assemble, test]) {
@@ -66,7 +77,7 @@ task deployFunction(type: AWSLambdaMigrateFunctionTask, dependsOn: [assemble, te
 
     zipFile = shadowJar.archivePath
     handler = "com.demo.Handler"
-    memorySize = 512
+    memorySize = 1024
     timeout = 20
 }
 
