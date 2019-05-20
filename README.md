@@ -10,5 +10,3 @@ AWS Lambda on Node.js platform written in Kotlin and compiled to JavaScript
 ## lambda-kotlin-spring
 AWS Lambda on Java 8 platform written in Kotlin with Spring Cloud Functions
 
-\\
-\"
